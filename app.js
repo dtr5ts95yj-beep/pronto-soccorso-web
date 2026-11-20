@@ -2,7 +2,7 @@
 import * as L from './logica.js';
 import { pdfModulo, pdfReintegro, calendarioIcs, leggiModulo, salvaModulo, provaModulo } from './stampa.js';
 
-export const VERSIONE = '1.4';
+export const VERSIONE = '1.5';
 let db = L.carica();
 const ui = { scheda: 'oggi', sede: '', modulo: '' };
 const aggiornaModulo = async () => { try { const m = await leggiModulo(); ui.modulo = m ? `${m.nome} · caricato il ${new Date(m.data).toLocaleDateString('it-IT')}` : ''; } catch { ui.modulo = ''; } };
@@ -122,9 +122,14 @@ function altro() {
   <div class="carta">
     <div class="campo"><label for="fProssimo">Prossimo controllo</label><input id="fProssimo" type="date" value="${L.oggiIso(L.prossimoControllo(db))}"></div>
     <div class="campo"><label for="fCadenza">Ogni quanto</label><select id="fCadenza">${Object.entries(L.CADENZE).map(([n, t]) => `<option value="${n}"${Number(n) === L.mesiCadenza(db) ? ' selected' : ''}>${t[0].toUpperCase() + t.slice(1)} (ogni ${n} ${n === '1' ? 'mese' : 'mesi'})</option>`).join('')}</select></div>
+    <div class="campo"><label for="fPreavviso">Preavviso</label><select id="fPreavviso">${[[0, 'Solo il giorno stesso'], [1, '1 giorno prima'], [2, '2 giorni prima'], [3, '3 giorni prima'], [5, '5 giorni prima'], [7, 'Una settimana prima']].map(([n, t]) => `<option value="${n}"${n === preavviso() ? ' selected' : ''}>${t}</option>`).join('')}</select></div>
     <button class="btn" data-az="salva-cal">Salva date</button>
     <button class="btn secondario" data-az="calendario">${ICO.cal}Aggiungi al Calendario iPhone</button>
-    <small class="tenue">Mette nel Calendario i prossimi 8 controlli, con avviso alle 9 del giorno prima e del giorno stesso. Se cambi le date, aggiungili di nuovo.</small>
+    <small class="tenue">Mette nel Calendario <b>un solo evento che si ripete</b> ogni ${L.mesiCadenza(db) === 1 ? 'mese' : L.mesiCadenza(db) + ' mesi'} dal ${esc(L.dataLunga(L.prossimoControllo(db)))}, con avviso alle 9 ${preavviso() ? `di ${preavviso() === 1 ? '1 giorno' : preavviso() + ' giorni'} prima e ` : ''}del giorno stesso.</small>
+  </div>
+  <div class="carta">
+    <b>Hai cambiato data? Togli prima quelli vecchi</b>
+    <small class="tenue">La app non può cancellare dal Calendario dell'iPhone: lo fai tu in un colpo solo. Nel <b>Calendario</b> apri un controllo cassette → <b>Elimina evento</b> → <b>Elimina tutti gli eventi futuri</b>. Poi qui tocca di nuovo <b>Aggiungi al Calendario iPhone</b>.</small>
   </div>
   <h2>Modulo Rev.04</h2>
   <div class="carta">
@@ -247,8 +252,7 @@ async function modulo(vuoto) {
   } catch (e) { avviso('Modulo non creato: ' + e.message); if (!ui.modulo) setTimeout(() => vai('altro'), 1200); }
 }
 async function calendario() {
-  const date = L.prossimiControlli(db, 8);
-  const ics = calendarioIcs(date, L.CADENZE[L.mesiCadenza(db)]);
+  const ics = calendarioIcs(L.prossimoControllo(db), L.mesiCadenza(db), L.CADENZE[L.mesiCadenza(db)], preavviso());
   const blob = new Blob([ics], { type: 'text/calendar' });
   // sull'iPhone aprire il file .ics mostra "Aggiungi tutti" al Calendario
   const url = URL.createObjectURL(blob);
@@ -257,6 +261,7 @@ async function calendario() {
 }
 
 /* ---------------- DISEGNO E AZIONI ---------------- */
+const preavviso = () => { const n = Number(db.settings.preavviso); return [0, 1, 2, 3, 5, 7].includes(n) ? n : 2; };
 function aggiornaBollino() { const n = L.anomalie(db).filter((a) => a.tipo === 'reintegro').length; const b = $('bollino'); b.textContent = n; b.hidden = !n; }
 function disegna() {
   const pag = { oggi, cassette, reintegro, storico, altro }[ui.scheda] || oggi;
@@ -305,7 +310,7 @@ const AZ = {
   'modulo-vuoto': () => modulo(true),
   'pdf-reintegro': async () => { try { const r = righeReintegro(); const b = await pdfReintegro(r, `Stampato il ${new Date().toLocaleDateString('it-IT')} · ${r.length} righe`); await consegna(b, 'Pezzi_da_chiedere_' + stamp() + '.pdf', 'application/pdf'); } catch (e) { avviso('PDF non creato: ' + e.message); } },
   calendario: () => calendario(),
-  'salva-cal': () => { const v = $('fProssimo').value; if (!v) { avviso('Scegli la data del prossimo controllo.'); return; } db.settings.dataRiferimento = v; db.settings.cadenza = Number($('fCadenza').value); salva(); disegna(); avviso('Date salvate. Ricorda di aggiungerle al Calendario.'); },
+  'salva-cal': () => { const v = $('fProssimo').value; if (!v) { avviso('Scegli la data del prossimo controllo.'); return; } db.settings.dataRiferimento = v; db.settings.cadenza = Number($('fCadenza').value); db.settings.preavviso = Number($('fPreavviso').value); salva(); disegna(); avviso('Salvato. Togli i vecchi dal Calendario e aggiungi di nuovo.'); },
   'salva-modulo': () => { db.settings.intestazione = $('fIntest').value.trim(); db.settings.sedeModulo = $('fSede').value.trim(); db.settings.addetto = $('fAddetto').value.trim(); salva(); avviso('Salvato.'); },
   'gestisci-sede': (el) => foglioSede(el.dataset.sede),
   'nuova-sede': () => { if (Object.keys(db.sites).length >= 10) { avviso('Massimo 10 cassette.'); return; } foglioSede(''); },

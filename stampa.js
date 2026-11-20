@@ -132,19 +132,18 @@ export async function pdfReintegro(righe, info) {
   return doc.save();
 }
 
-/** File .ics: un evento per ogni controllo, con avviso alle 9 del giorno e il giorno prima. */
-export function calendarioIcs(date, cadenza) {
+/** File .ics: UN solo evento che si ripete (ogni N mesi), così nel Calendario si toglie tutto in un colpo
+ *  con "Elimina tutti gli eventi futuri". Avviso alle 9 del giorno, e alle 9 di N giorni prima. */
+export function calendarioIcs(primo, mesi, cadenza, preavviso) {
   const f = (d) => d.getFullYear() + String(d.getMonth() + 1).padStart(2, '0') + String(d.getDate()).padStart(2, '0');
   const ora = new Date().toISOString().replace(/[-:]/g, '').replace(/\.\d+/, '');
-  const righe = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Gestione Pronto Soccorso//IT', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH'];
-  for (const d of date) {
-    const fine = new Date(d); fine.setDate(fine.getDate() + 1);
-    righe.push('BEGIN:VEVENT', `UID:controllo-${f(d)}@pronto-soccorso`, `DTSTAMP:${ora}`, `DTSTART;VALUE=DATE:${f(d)}`, `DTEND;VALUE=DATE:${f(fine)}`,
-      `SUMMARY:Controllo ${cadenza} cassette pronto soccorso`, 'DESCRIPTION:Controlla le cassette e registra il controllo nella app Pronto Soccorso.',
-      'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Controllo cassette pronto soccorso', 'TRIGGER:PT9H', 'END:VALARM',
-      'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Domani: controllo cassette pronto soccorso', 'TRIGGER:-PT15H', 'END:VALARM',
-      'END:VEVENT');
-  }
-  righe.push('END:VCALENDAR');
-  return righe.join('\r\n') + '\r\n';
+  const fine = new Date(primo); fine.setDate(fine.getDate() + 1);
+  const prima = preavviso > 0 ? ['BEGIN:VALARM', 'ACTION:DISPLAY', `DESCRIPTION:Tra ${preavviso} ${preavviso === 1 ? 'giorno' : 'giorni'}: controllo cassette pronto soccorso`, `TRIGGER:-PT${preavviso * 24 - 9}H`, 'END:VALARM'] : [];
+  return ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Gestione Pronto Soccorso//IT', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH',
+    'BEGIN:VEVENT', `UID:controlli-cassette-${f(primo)}@pronto-soccorso`, `DTSTAMP:${ora}`, `DTSTART;VALUE=DATE:${f(primo)}`, `DTEND;VALUE=DATE:${f(fine)}`,
+    `RRULE:FREQ=MONTHLY;INTERVAL=${mesi};COUNT=${Math.max(4, Math.round(36 / mesi))}`,
+    `SUMMARY:Controllo ${cadenza} cassette pronto soccorso`, 'DESCRIPTION:Controlla le cassette e registra il controllo nella app Pronto Soccorso.',
+    ...prima,
+    'BEGIN:VALARM', 'ACTION:DISPLAY', 'DESCRIPTION:Oggi: controllo cassette pronto soccorso', 'TRIGGER:PT9H', 'END:VALARM',
+    'END:VEVENT', 'END:VCALENDAR'].join('\r\n') + '\r\n';
 }
