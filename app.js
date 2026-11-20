@@ -2,7 +2,7 @@
 import * as L from './logica.js';
 import { pdfReintegro, calendarioIcs, salvaModulo } from './stampa.js';
 
-export const VERSIONE = '1.7';
+export const VERSIONE = '1.8';
 let db = L.carica();
 const ui = { scheda: 'oggi', sede: '' };
 const $ = (id) => document.getElementById(id);
@@ -101,11 +101,11 @@ function cassetta(s) {
   <div class="testa"><div><div class="sopra">Ultimo controllo: ${esc(L.ultimoControllo(db, s))}</div><h1>${esc(L.nomeSede(s))}</h1></div><span class="pill" style="--c:${COLORE[st.livello]};margin-bottom:6px">${ETICHETTA[st.livello]}</span></div>
   <div class="affianca"><button class="btn" data-az="controllo" data-sede="${esc(s)}">${ICO.spunta}Controllo</button><button class="btn secondario" data-az="uso" data-sede="${esc(s)}">${ICO.mano}Ho usato</button></div>
   <div class="segmenti"><button data-az="vista" data-v="elenco" aria-pressed="${ui.vista !== 'modifica'}">Elenco</button><button data-az="vista" data-v="modifica" aria-pressed="${ui.vista === 'modifica'}">Modifica quantità</button></div>
-  ${ui.vista !== 'modifica' ? elencoCassetta(s, ordine) : `<div class="tenue" style="padding:0 2px">Cambia presenti con − e + e scrivi la scadenza (MM/AA). Si salva da solo.</div>
+  ${ui.vista !== 'modifica' ? elencoCassetta(s, ordine) : `<div class="tenue" style="padding:0 2px">Cambia i presenti con − e +, tocca la scadenza per sceglierla. Si salva da solo.</div>
   <div class="lista">${ordine.map(({ x, i }) => { const sa = L.statoArticolo(db, x); return `<div class="art">
     <button class="nome" data-az="modifica-art" data-sede="${esc(s)}" data-i="${i}"><b>${esc(x.articolo)}</b><small>Richiesti ${esc(x.richiesta)}</small></button><span class="pill ${sa.cls}">${sa.testo}</span>
     <div class="sotto"><div class="passi"><button data-az="passo" data-sede="${esc(s)}" data-i="${i}" data-d="-1" aria-label="Togli 1">−</button><input type="number" inputmode="numeric" min="0" value="${typeof x.disponibile === 'number' ? x.disponibile : 0}" data-campo="disponibile" data-sede="${esc(s)}" data-i="${i}" aria-label="Presenti"><button data-az="passo" data-sede="${esc(s)}" data-i="${i}" data-d="1" aria-label="Aggiungi 1">+</button></div>
-    <input class="scad" value="${esc(x.scadenza === '/' ? '' : x.scadenza)}" placeholder="MM/AA" inputmode="numeric" data-campo="scadenza" data-sede="${esc(s)}" data-i="${i}" aria-label="Scadenza"><span class="etic">presenti · scadenza</span></div></div>`; }).join('') || '<div class="vuota">Nessun articolo.</div>'}</div>`}
+    ${bottoneScad(x.scadenza, `data-sede="${esc(s)}" data-i="${i}"`)}<span class="etic">presenti · scadenza</span></div></div>`; }).join('') || '<div class="vuota">Nessun articolo.</div>'}</div>`}
   <button class="btn vuoto" data-az="nuovo-art" data-sede="${esc(s)}">${ICO.piu}Aggiungi articolo</button>`;
 }
 
@@ -163,6 +163,33 @@ function altro() {
   <div class="tenue" style="text-align:center;padding:6px 0 0">Gestione Pronto Soccorso · versione ${VERSIONE} · Andrea Canovi</div>`;
 }
 
+const MESI = ['Gen', 'Feb', 'Mar', 'Apr', 'Mag', 'Giu', 'Lug', 'Ago', 'Set', 'Ott', 'Nov', 'Dic'];
+function bottoneScad(v, dati, largo = false) {
+  const t = v && v !== '/' ? String(v) : '';
+  return `<button type="button" class="scad${largo ? ' largo' : ''}${t ? '' : ' vuota-s'}" data-az="scegli-scad" ${dati}>${t ? esc(t) : 'Non scade'}</button>`;
+}
+/* Scelta della scadenza: tocchi l'anno e poi il mese. Niente tastiera. */
+let scelta = null;
+function apriScelta(el) {
+  const now = new Date(), corrente = (el.textContent.match(/^(\d{1,2})\/(\d{2,4})$/) || []);
+  let anno = corrente[2] ? (corrente[2].length === 2 ? 2000 + +corrente[2] : +corrente[2]) : now.getFullYear();
+  const mese = corrente[1] ? +corrente[1] : 0;
+  scelta = { el, anno };
+  const riga = el.closest('.art, .riga-t'), nome = riga ? (riga.querySelector('.nome b, .t-nome b') || {}).textContent : ($('aNome') ? $('aNome').value : '');
+  const anni = []; for (let a = now.getFullYear() - 1; a <= now.getFullYear() + 8; a++) anni.push(a);
+  const box = $('scelta');
+  box.innerHTML = `<div class="testa-foglio"><div><div class="tenue">${esc(nome || 'Scadenza')}</div><h3>Scadenza</h3></div><button class="chiudi" data-az="chiudi-scelta" aria-label="Chiudi">×</button></div>
+    <div class="etic" style="font-size:12px">1 · ANNO</div><div class="griglia anni">${anni.map((a) => `<button data-az="anno" data-a="${a}" aria-pressed="${a === anno}">${a}</button>`).join('')}</div>
+    <div class="etic" style="font-size:12px">2 · MESE</div><div class="griglia mesi">${MESI.map((m, i) => `<button data-az="mese" data-m="${i + 1}" aria-pressed="${i + 1 === mese}">${m}</button>`).join('')}</div>
+    <button class="btn vuoto" data-az="non-scade">Non scade</button>`;
+  box.hidden = false; $('velo2').hidden = false;
+}
+function chiudiScelta() { $('scelta').hidden = true; $('velo2').hidden = true; scelta = null; }
+function applicaScad(v) {
+  const el = scelta.el;
+  if (el.dataset.campoId) { $(el.dataset.campoId).value = v; el.textContent = v || 'Non scade'; el.classList.toggle('vuota-s', !v); chiudiScelta(); return; }
+  const x = db.sites[el.dataset.sede][+el.dataset.i]; x.scadenza = v || '/'; chiudiScelta(); salva(); disegnaMantieni();
+}
 /* ---------------- FOGLI ---------------- */
 function apriFoglio(html) { $('foglio').innerHTML = '<div class="maniglia"></div>' + html; $('foglio').hidden = false; $('velo').hidden = false; $('foglio').scrollTop = 0; }
 function chiudiFoglio() { $('foglio').hidden = true; $('velo').hidden = true; $('foglio').innerHTML = ''; }
@@ -175,7 +202,7 @@ function foglioControllo(s) {
     <div class="campo"><label for="cUbicata">Ubicata presso</label><input id="cUbicata" placeholder="Es. ufficio, reparto…" value="${esc(ultimaUbicata(s))}"></div>
     <button class="btn verde" data-az="tutto-a-posto">${ICO.spunta}Tutto a posto</button>
     <div class="lista">${items.map((x, i) => `<div class="art"><div class="nome"><b>${esc(x.articolo)}</b><small>Richiesti ${esc(x.richiesta)}</small></div><label class="integro"><input type="checkbox" id="ci${i}" checked>integro</label>
-      <div class="sotto"><div class="passi"><button data-az="passo-c" data-i="${i}" data-d="-1">−</button><input type="number" inputmode="numeric" min="0" id="cq${i}" value="${typeof x.disponibile === 'number' ? x.disponibile : 0}"><button data-az="passo-c" data-i="${i}" data-d="1">+</button></div><input class="scad" id="ce${i}" value="${esc(x.scadenza === '/' ? '' : x.scadenza)}" placeholder="MM/AA" inputmode="numeric"><span class="etic">presenti · scadenza</span></div></div>`).join('')}</div>
+      <div class="sotto"><div class="passi"><button data-az="passo-c" data-i="${i}" data-d="-1">−</button><input type="number" inputmode="numeric" min="0" id="cq${i}" value="${typeof x.disponibile === 'number' ? x.disponibile : 0}"><button data-az="passo-c" data-i="${i}" data-d="1">+</button></div><input type="hidden" id="ce${i}" value="${esc(x.scadenza === '/' ? '' : x.scadenza)}">${bottoneScad(x.scadenza, `data-campo-id="ce${i}"`)}<span class="etic">presenti · scadenza</span></div></div>`).join('')}</div>
     <div class="campo"><label for="cNote">Note</label><textarea id="cNote"></textarea></div>
     <button class="btn" data-az="salva-controllo" data-sede="${esc(s)}">Salva controllo</button>`);
 }
@@ -218,7 +245,7 @@ function foglioArticolo(s, i) {
   apriFoglio(testaFoglio(i >= 0 ? 'Modifica articolo' : 'Nuovo articolo', L.nomeSede(s)) + `
     <div class="campo"><label for="aNome">Descrizione</label><input id="aNome" value="${esc(x.articolo)}"></div>
     <div class="affianca"><div class="campo"><label for="aRich">Quantità richiesta</label><input id="aRich" type="number" inputmode="numeric" min="0" value="${esc(x.richiesta)}"></div><div class="campo"><label for="aPres">Presenti</label><input id="aPres" type="number" inputmode="numeric" min="0" value="${typeof x.disponibile === 'number' ? x.disponibile : 0}"></div></div>
-    <div class="campo"><label for="aScad">Scadenza (MM/AA, vuoto se non scade)</label><input id="aScad" value="${esc(x.scadenza === '/' ? '' : x.scadenza)}" inputmode="numeric"></div>
+    <div class="campo"><label>Scadenza</label><input type="hidden" id="aScad" value="${esc(x.scadenza === '/' ? '' : x.scadenza)}">${bottoneScad(x.scadenza, `data-campo-id="aScad"`, true)}</div>
     <button class="btn" data-az="salva-art" data-sede="${esc(s)}" data-i="${i}">Salva</button>
     ${i >= 0 ? `<button class="btn pericolo" data-az="elimina-art" data-sede="${esc(s)}" data-i="${i}">Elimina articolo</button>` : ''}`);
 }
@@ -291,6 +318,11 @@ const AZ = {
   controllo: (el) => foglioControllo(el.dataset.sede),
   uso: (el) => foglioUso(el.dataset.sede),
   chiudi: chiudiFoglio,
+  'scegli-scad': (el) => apriScelta(el),
+  'chiudi-scelta': () => chiudiScelta(),
+  anno: (el) => { scelta.anno = +el.dataset.a; document.querySelectorAll('#scelta [data-az=anno]').forEach((b) => b.setAttribute('aria-pressed', b === el)); },
+  mese: (el) => applicaScad(String(el.dataset.m).padStart(2, '0') + '/' + String(scelta.anno).slice(2)),
+  'non-scade': () => applicaScad(''),
   passo: (el) => { const x = db.sites[el.dataset.sede][+el.dataset.i]; x.disponibile = Math.max(0, (typeof x.disponibile === 'number' ? x.disponibile : 0) + Number(el.dataset.d)); salva(); disegnaMantieni(); },
   'passo-c': (el) => { const q = $('cq' + el.dataset.i); q.value = Math.max(0, (Number(q.value) || 0) + Number(el.dataset.d)); },
   'passo-u': (el) => { const q = $('uq' + el.dataset.i); q.value = Math.max(0, (Number(q.value) || 0) + Number(el.dataset.d)); },
@@ -334,6 +366,7 @@ document.addEventListener('click', (e) => {
   const el = e.target.closest('[data-az]'); if (el && AZ[el.dataset.az]) { e.preventDefault(); AZ[el.dataset.az](el); }
 });
 $('velo').addEventListener('click', chiudiFoglio);
+$('velo2').addEventListener('click', chiudiScelta);
 document.addEventListener('change', (e) => {
   const el = e.target; if (!el.dataset || !el.dataset.campo) return;
   const x = db.sites[el.dataset.sede][+el.dataset.i];
