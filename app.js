@@ -22,6 +22,7 @@ const ICO = {
 };
 const COLORE = { verde: 'var(--verde)', giallo: 'var(--arancio)', rosso: 'var(--rosso)' };
 const ETICHETTA = { verde: 'A POSTO', giallo: 'ATTENZIONE', rosso: 'DA SISTEMARE' };
+const anello = (pct, col, dentro, grande = false) => `<div class="anello${grande ? ' grande' : ''}" style="--p:${Math.round(pct)};--c:${col}"><span>${dentro}</span></div>`;
 const tondo = (livello, path) => `<div class="ico-tondo" style="background:${COLORE[livello]}"><svg viewBox="0 0 24 24">${path}</svg></div>`;
 
 function salva() { if (!L.salva(db)) avviso('Non riesco a salvare nel telefono.'); aggiornaBollino(); }
@@ -33,7 +34,7 @@ function schedaCassetta(s) {
   const st = L.statoSede(db, s), segno = st.livello === 'verde' ? ICO.ok : st.livello === 'giallo' ? ICO.esc : ICO.x;
   const box = (n, t, col) => `<div><b style="color:${n ? col : 'var(--tenue)'}">${n}</b><span>${t}</span></div>`;
   return `<button class="sede" data-az="apri-sede" data-sede="${esc(s)}" style="--c:${COLORE[st.livello]}">
-    <div class="sede-testa">${tondo(st.livello, segno)}<div><h3>${esc(L.nomeSede(s))}</h3><p>Ultimo controllo: ${esc(L.ultimoControllo(db, s))}</p></div><span class="pill" style="--c:${COLORE[st.livello]}">${ETICHETTA[st.livello]}</span></div>
+    <div class="sede-testa">${anello(st.pct, COLORE[st.livello], Math.round(st.pct) + '<small>%</small>')}<div><h3>${esc(L.nomeSede(s))}</h3><p>Ultimo controllo: ${esc(L.ultimoControllo(db, s))}</p></div><span class="pill" style="--c:${COLORE[st.livello]}">${ETICHETTA[st.livello]}</span></div>
     <div class="conte">${box(st.reintegro, 'da reintegrare', 'var(--arancio)')}${box(st.scaduti, st.scaduti === 1 ? 'scaduto' : 'scaduti', 'var(--rosso-t)')}${box(st.scadenza, 'in scadenza', 'var(--giallo)')}</div>
     <div class="barra"><i style="width:${st.pct}%"></i></div>
     <div class="sede-piede"><span>${st.presenti} / ${st.richiesti} pezzi presenti</span><b>Apri cassetta ${ICO.dx}</b></div></button>`;
@@ -51,11 +52,14 @@ function oggi() {
   if (nR) det.push(nR === 1 ? '1 articolo da reintegrare' : `${nR} articoli da reintegrare`);
   if (nS) det.push(nS === 1 ? '1 scadenza da verificare' : `${nS} scadenze da verificare`);
   const giorni = Math.ceil((prossimo - now) / 86400000);
+  const totR = stati.reduce((n, x) => n + x.richiesti, 0), totPct = totR ? stati.reduce((n, x) => n + x.presenti, 0) / totR * 100 : 100;
   const gruppi = keys.map((k) => ({ k, r: an.filter((a) => a.sede === k) })).filter((g) => g.r.length);
   const d = now.toLocaleDateString('it-IT', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
   return `<div class="testa"><div class="logo">${ICO.croce}</div><div><div class="sopra">${esc(d.charAt(0).toUpperCase() + d.slice(1))}</div><h1>Pronto Soccorso</h1></div></div>
-  <div class="striscia" style="--c:${COLORE[livello]}">${tondo(livello, livello === 'verde' ? ICO.ok : ICO.att)}<div style="flex:1;min-width:0"><b>${esc(tit.join(' · ') || 'Tutto a posto')}</b><span>${esc(det.join(' · '))}</span></div></div>
-  ${keys.length ? `<button class="btn" data-az="registra">${ICO.spunta}Registra controllo</button>` : ''}
+  <section class="eroe" style="--c:${COLORE[livello]}">
+    <div class="eroe-riga">${anello(totPct, COLORE[livello], `${Math.round(totPct)}<small>%</small>`, true)}<div class="eroe-testo"><span class="eroe-stato">${livello === 'verde' ? 'TUTTO IN ORDINE' : livello === 'giallo' ? 'DA TENERE D\'OCCHIO' : 'SERVE INTERVENIRE'}</span><b>${esc(tit.join(' · ') || 'Tutto a posto')}</b><span>${esc(det.join(' · '))}</span></div></div>
+    ${keys.length ? `<button class="btn" data-az="registra">${ICO.spunta}Registra controllo</button>` : ''}
+  </section>
   <div class="due">${keys.map(schedaCassetta).join('')}
   <button class="carta controllo" data-az="calendario" style="--c:${fatto ? 'var(--verde)' : 'var(--rosso)'}"><span class="etichetta">${ICO.cal.replace('<svg', '<svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2"')}Controllo ${esc(cad)}</span>
     <strong>${fatto ? (giorni === 1 ? 'Tra 1 giorno' : `Tra ${giorni} giorni`) : 'Da fare'}</strong><small>${fatto ? 'Prossimo: ' + esc(L.dataLunga(prossimo)) : 'Previsto dal ' + esc(L.dataLunga(L.inizioPeriodo(db, now)))}</small>

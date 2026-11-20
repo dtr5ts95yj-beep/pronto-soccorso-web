@@ -46,7 +46,7 @@ h2 { margin: 6px 2px 0; font-size: 13px; font-weight: 700; color: var(--tenue); 
 .sede { background: var(--scheda); border: 1px solid var(--linea); border-radius: 16px; padding: 14px 16px; display: flex; flex-direction: column; gap: 12px; text-align: left; width: 100%; }
 .sede-testa { display: flex; align-items: center; gap: 12px; }
 .sede-testa .ico-tondo { width: 40px; height: 40px; }
-.sede-testa > div:not(.ico-tondo) { flex: 1; min-width: 0; }
+.sede-testa > div:not(.ico-tondo):not(.anello) { flex: 1; min-width: 0; }
 .sede-testa h3 { margin: 0; font-size: 18px; font-weight: 700; }
 .sede-testa p { margin: 1px 0 0; font-size: 12.5px; color: var(--tenue); }
 .conte { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
@@ -122,3 +122,85 @@ nav#schede svg { width: 24px; height: 24px; }
 
 .due { display: flex; flex-direction: column; gap: 14px; }
 @media (min-width: 700px) { .due { display: grid; grid-template-columns: 1fr 1fr; } }
+
+/* ===================== GRAFICA 2: più scura, profonda e luminosa ===================== */
+:root {
+  --fondo: #090c13; --scheda: rgba(255,255,255,.045); --scheda2: rgba(255,255,255,.035); --linea: rgba(255,255,255,.08); --bordo: rgba(255,255,255,.14);
+  --tenue: #9aa3b5; --blu: #2f7bff; --blu-t: #6aa8ff;
+}
+html { overflow-x: hidden; }
+body {
+  background:
+    radial-gradient(900px 520px at 85% -10%, rgba(47,123,255,.20), transparent 60%),
+    radial-gradient(700px 480px at -10% 8%, rgba(31,157,85,.16), transparent 60%),
+    var(--fondo);
+  background-attachment: fixed; overflow-x: hidden;
+}
+main { width: 100%; gap: 16px; }
+h1 { font-size: 32px; letter-spacing: -.6px; }
+h2 { color: #7f899c; font-size: 12px; letter-spacing: .12em; margin-top: 10px; }
+.logo { width: 46px; height: 46px; border-radius: 14px; background: linear-gradient(145deg, #34d27a, #12814a); box-shadow: 0 8px 24px rgba(31,157,85,.45), inset 0 1px 0 rgba(255,255,255,.35); }
+.carta, .lista, .sede {
+  background: linear-gradient(180deg, rgba(255,255,255,.065), rgba(255,255,255,.025));
+  border: 1px solid var(--linea); border-radius: 22px;
+  box-shadow: 0 12px 30px rgba(0,0,0,.35), inset 0 1px 0 rgba(255,255,255,.05);
+  backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+}
+.lista > * + * { border-top-color: rgba(255,255,255,.06); }
+
+/* riquadro principale */
+.eroe { position: relative; overflow: hidden; border-radius: 26px; padding: 18px; display: flex; flex-direction: column; gap: 16px;
+  background: radial-gradient(420px 220px at 0% 0%, color-mix(in srgb, var(--c) 34%, transparent), transparent 70%),
+              linear-gradient(160deg, rgba(255,255,255,.09), rgba(255,255,255,.025));
+  border: 1px solid color-mix(in srgb, var(--c) 40%, rgba(255,255,255,.08));
+  box-shadow: 0 18px 40px rgba(0,0,0,.45), 0 0 0 1px rgba(255,255,255,.02) inset; }
+.eroe-riga { display: flex; align-items: center; gap: 16px; }
+.eroe-testo { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 3px; }
+.eroe-stato { font-size: 11px; font-weight: 800; letter-spacing: .14em; color: color-mix(in srgb, var(--c) 75%, #fff); }
+.eroe-testo b { font-size: 17px; font-weight: 750; line-height: 1.25; }
+.eroe-testo > span:last-child { font-size: 13px; color: var(--tenue); line-height: 1.35; }
+
+/* anello di avanzamento */
+.anello { --d: 54px; width: var(--d); height: var(--d); border-radius: 50%; flex: none; position: relative; display: grid; place-items: center;
+  background: conic-gradient(var(--c) calc(var(--p) * 1%), rgba(255,255,255,.09) 0);
+  filter: drop-shadow(0 0 10px color-mix(in srgb, var(--c) 45%, transparent)); }
+.anello::before { content: ""; position: absolute; inset: 6px; border-radius: 50%; background: #121725; }
+.anello span { position: relative; font-size: 15px; font-weight: 800; letter-spacing: -.3px; }
+.anello small { font-size: 10px; font-weight: 700; color: var(--tenue); margin-left: 1px; }
+.anello.grande { --d: 84px; }
+.anello.grande::before { inset: 8px; background: #141a28; }
+.anello.grande span { font-size: 24px; }
+.anello.grande small { font-size: 12px; }
+
+/* cassette */
+.sede { padding: 16px; gap: 14px; }
+.sede-testa h3 { font-size: 19px; }
+.conte { gap: 8px; }
+.conte > div { background: rgba(0,0,0,.22); border: 1px solid rgba(255,255,255,.06); border-radius: 14px; padding: 10px 11px; }
+.conte b { font-size: 24px; }
+.barra { height: 7px; background: rgba(255,255,255,.08); }
+.barra i { background: linear-gradient(90deg, color-mix(in srgb, var(--c) 70%, #fff), var(--c)); box-shadow: 0 0 12px color-mix(in srgb, var(--c) 60%, transparent); }
+.pill { border: 1px solid color-mix(in srgb, var(--c) 35%, transparent); }
+.controllo strong { font-size: 34px; letter-spacing: -.6px; }
+
+/* pulsanti */
+.btn { border-radius: 16px; background: linear-gradient(180deg, #4b8dff, #1f63f0); box-shadow: 0 10px 24px rgba(31,99,240,.38), inset 0 1px 0 rgba(255,255,255,.25); min-width: 0; }
+.btn.secondario { background: rgba(255,255,255,.09); box-shadow: inset 0 1px 0 rgba(255,255,255,.08); border: 1px solid rgba(255,255,255,.08); }
+.btn.vuoto { background: transparent; box-shadow: none; border: 1px solid var(--bordo); }
+.btn.verde { background: linear-gradient(180deg, #3bd47f, #1a9a52); box-shadow: 0 10px 24px rgba(26,154,82,.35), inset 0 1px 0 rgba(255,255,255,.25); }
+.btn.pericolo { background: rgba(255,69,58,.14); border: 1px solid rgba(255,69,58,.35); color: #ff8a82; box-shadow: none; }
+.btn:active { transform: scale(.98); }
+.affianca .btn { padding: 0 10px; font-size: 15px; white-space: nowrap; }
+.passi { border-color: rgba(255,255,255,.12); border-radius: 13px; background: rgba(0,0,0,.25); }
+.passi button { background: transparent; color: var(--blu-t); }
+.scad, .campo input, .campo select, .campo textarea { background: rgba(0,0,0,.28); border-color: rgba(255,255,255,.12); }
+
+/* barra delle schede: capsula sospesa */
+nav#schede { left: 12px; right: 12px; bottom: calc(var(--basso) + 10px); max-width: 520px; margin: 0 auto; padding: 8px 6px; border-radius: 26px;
+  background: rgba(22,27,40,.72); border: 1px solid rgba(255,255,255,.09); box-shadow: 0 16px 40px rgba(0,0,0,.55); }
+nav#schede button { border-radius: 18px; padding: 6px 0; }
+nav#schede button[aria-current="page"] { color: #fff; background: linear-gradient(180deg, rgba(75,141,255,.35), rgba(31,99,240,.22)); }
+main { padding-bottom: calc(var(--basso) + 110px); }
+#avviso { bottom: calc(var(--basso) + 96px); }
+#foglio { background: #121725; border-top: 1px solid rgba(255,255,255,.08); }
+#foglio .testa-foglio { background: #121725; }
