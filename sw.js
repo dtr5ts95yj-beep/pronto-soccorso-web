@@ -1,5 +1,5 @@
 // Tiene la web app nel telefono: si apre anche senza rete.
-const VERSIONE = 'pronto-soccorso-4';
+const VERSIONE = 'pronto-soccorso-5';
 const FILE = ['./', 'index.html', 'app.css', 'app.js', 'logica.js', 'stampa.js', 'dati-iniziali.js', 'manifest.webmanifest',
   'lib/pdf-lib.min.js', 'icone/icona-192.png', 'icone/icona-512.png', 'icone/apple-touch-icon.png'];
 self.addEventListener('install', (e) => { e.waitUntil(caches.open(VERSIONE).then((c) => c.addAll(FILE.map((f) => new Request(f, { cache: 'reload' })))).then(() => self.skipWaiting())); });

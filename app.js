@@ -2,7 +2,7 @@
 import * as L from './logica.js';
 import { pdfModulo, pdfReintegro, calendarioIcs, leggiModulo, salvaModulo, provaModulo } from './stampa.js';
 
-export const VERSIONE = '1.2';
+export const VERSIONE = '1.3';
 let db = L.carica();
 const ui = { scheda: 'oggi', sede: '', modulo: '' };
 const aggiornaModulo = async () => { try { const m = await leggiModulo(); ui.modulo = m ? `${m.nome} · caricato il ${new Date(m.data).toLocaleDateString('it-IT')}` : ''; } catch { ui.modulo = ''; } };
