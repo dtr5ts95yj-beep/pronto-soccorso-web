@@ -2,6 +2,7 @@
 import * as L from './logica.js';
 import { pdfModulo, pdfReintegro, calendarioIcs, leggiModulo, salvaModulo, provaModulo } from './stampa.js';
 
+export const VERSIONE = '1.2';
 let db = L.carica();
 const ui = { scheda: 'oggi', sede: '', modulo: '' };
 const aggiornaModulo = async () => { try { const m = await leggiModulo(); ui.modulo = m ? `${m.nome} · caricato il ${new Date(m.data).toLocaleDateString('it-IT')}` : ''; } catch { ui.modulo = ''; } };
@@ -141,7 +142,7 @@ function altro() {
     <button class="btn vuoto" data-az="importa">Ripristina da una copia</button>
   </div>
   <button class="btn pericolo" data-az="azzera">Riparti dall'elenco standard</button>
-  <div class="tenue" style="text-align:center;padding:6px 0 0">Gestione Pronto Soccorso · Andrea Canovi</div>`;
+  <div class="tenue" style="text-align:center;padding:6px 0 0">Gestione Pronto Soccorso · versione ${VERSIONE} · Andrea Canovi</div>`;
 }
 
 /* ---------------- FOGLI ---------------- */
@@ -343,3 +344,9 @@ if (navigator.storage && navigator.storage.persist) navigator.storage.persist().
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
 aggiornaModulo().then(disegna);
 disegna();
+{ const v = $('sp-ver'); if (v) v.textContent = `versione ${VERSIONE}`; }
+(function chiudiSplash() {
+  const sp = $('splash'); if (!sp) return;
+  const resta = Math.max(0, 2300 - performance.now());     // la barra arriva in fondo, poi si apre la app
+  setTimeout(() => { sp.classList.add('via'); document.body.classList.add('intro'); setTimeout(() => { sp.remove(); document.body.classList.remove('intro'); }, 1400); }, resta);
+})();

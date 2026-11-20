@@ -18,6 +18,20 @@
 <script type="module" src="app.js"></script>
 </head>
 <body>
+<div id="splash" aria-hidden="true">
+  <div class="sp-luce"></div>
+  <svg class="sp-kit" viewBox="0 0 140 120">
+    <defs><linearGradient id="sp-g" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#3fe08a"/><stop offset="1" stop-color="#128049"/></linearGradient></defs>
+    <rect class="sp-maniglia" x="48" y="8" width="44" height="22" rx="8" fill="none" stroke="#d9f7e6" stroke-width="7"/>
+    <rect x="8" y="24" width="124" height="88" rx="18" fill="url(#sp-g)"/>
+    <rect x="8" y="24" width="124" height="14" rx="7" fill="#ffffff" opacity=".18"/>
+    <path class="sp-croce" d="M60 46h20v16h16v20H80v16H60V82H44V62h16z" fill="#fff"/>
+  </svg>
+  <svg class="sp-ecg" viewBox="0 0 220 40"><path d="M0 22h70l8-14 10 28 10-34 9 20h113" fill="none" stroke="#3fe08a" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  <div class="sp-nome"><span>GESTIONE</span><b>PRONTO SOCCORSO</b></div>
+  <div class="sp-barra"><i></i></div>
+  <div class="sp-ver" id="sp-ver"></div>
+</div>
 <main id="schermo" aria-live="polite"></main>
 <nav id="schede" aria-label="Sezioni">
   <button type="button" data-scheda="oggi"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 4h7v7H4zM13 4h7v7h-7zM4 13h7v7H4zM13 13h7v7h-7z"/></svg>Oggi</button>
