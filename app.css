@@ -246,3 +246,18 @@ input[type="number"] { -webkit-appearance: none; appearance: none; }
   background-repeat: no-repeat; background-position: right 10px center; background-size: 18px; }
 .carta, .lista, .sede, .eroe { min-width: 0; max-width: 100%; }
 .affianca .campo input[type="date"] { font-size: 15px; padding: 0 10px; }
+
+/* scelta Elenco / Modifica nella cassetta */
+.segmenti { display: flex; padding: 4px; gap: 4px; border-radius: 14px; background: rgba(0,0,0,.3); border: 1px solid rgba(255,255,255,.08); }
+.segmenti button { flex: 1; height: 38px; border: 0; border-radius: 10px; background: transparent; color: var(--tenue); font-size: 14.5px; font-weight: 650; }
+.segmenti button[aria-pressed="true"] { background: rgba(255,255,255,.12); color: #fff; box-shadow: 0 2px 8px rgba(0,0,0,.3); }
+/* elenco a colonne degli articoli */
+.tabella .riga-t { display: grid; grid-template-columns: minmax(0, 1fr) 62px 66px; gap: 8px; align-items: center; padding: 11px 14px; background: none; border: 0; width: 100%; text-align: left; color: inherit; font: inherit; }
+.tabella .riga-t:active { background: rgba(255,255,255,.05); }
+.tabella .intest { padding-top: 9px; padding-bottom: 9px; font-size: 11px; font-weight: 700; letter-spacing: .08em; color: var(--tenue); text-transform: uppercase; }
+.tabella .intest span:not(:first-child), .t-num, .t-scad { text-align: center; }
+.t-nome { min-width: 0; display: flex; flex-direction: column; gap: 1px; }
+.t-nome b { font-size: 14px; font-weight: 600; line-height: 1.25; }
+.t-nome small { font-size: 12px; font-weight: 600; }
+.t-num b { font-size: 18px; font-weight: 800; } .t-num small { font-size: 12px; color: var(--tenue); font-weight: 600; }
+.t-scad { font-size: 14px; font-weight: 600; font-variant-numeric: tabular-nums; }

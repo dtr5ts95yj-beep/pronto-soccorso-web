@@ -2,7 +2,7 @@
 import * as L from './logica.js';
 import { pdfModulo, pdfReintegro, calendarioIcs, leggiModulo, salvaModulo, provaModulo } from './stampa.js';
 
-export const VERSIONE = '1.5';
+export const VERSIONE = '1.6';
 let db = L.carica();
 const ui = { scheda: 'oggi', sede: '', modulo: '' };
 const aggiornaModulo = async () => { try { const m = await leggiModulo(); ui.modulo = m ? `${m.nome} · caricato il ${new Date(m.data).toLocaleDateString('it-IT')}` : ''; } catch { ui.modulo = ''; } };
@@ -67,9 +67,23 @@ function oggi() {
     <span class="piede"><span>${fatto ? 'Registrato per questo periodo' : 'Successivo: ' + esc(L.dataLunga(prossimo))}</span><b>Calendario</b></span></button></div>
   <h2>Anomalie da risolvere · ${an.length}</h2>
   ${gruppi.length ? gruppi.map((g) => `<div class="lista"><div class="voce" style="min-height:40px"><small style="font-weight:700;letter-spacing:.06em">${esc(L.nomeSede(g.k).toUpperCase())} · ${g.r.length}</small></div>${g.r.map((a) => `<button class="voce" data-az="apri-sede" data-sede="${esc(a.sede)}"><span class="punto ${a.cls}" style="background:var(--c)"></span><span class="corpo"><b>${esc(a.articolo)}</b><small>${esc(a.dettaglio)}</small></span><span class="pill ${a.cls}">${a.etichetta}</span></button>`).join('')}</div>`).join('') : '<div class="carta vuota">Nessuna anomalia: dotazioni complete e scadenze regolari.</div>'}
-  <div class="affianca"><button class="btn vuoto" data-az="modulo-vuoto">${ICO.foglio}Modulo vuoto</button><button class="btn secondario" data-az="modulo">${ICO.stampa}Modulo compilato</button></div>`;
+  ${riquadroModulo()}`;
 }
 
+function riquadroModulo() {
+  const keys = Object.keys(db.sites), inizio = L.inizioPeriodo(db), fatte = keys.filter((k) => L.fattaNelPeriodo(db, k, inizio)), mancano = keys.filter((k) => !fatte.includes(k));
+  const stato = !ui.modulo ? ['c-reintegro', 'Prima carica il modulo originale (una volta sola)']
+    : !fatte.length ? ['c-reintegro', 'Registra prima il controllo delle cassette']
+    : mancano.length ? ['c-scadenza', `Pronto per ${fatte.map(L.nomeSede).join(', ')} · manca ${mancano.map(L.nomeSede).join(', ')}`]
+    : ['c-ok', `Pronto: tutte le cassette controllate in questo periodo`];
+  return `<h2>Modulo da inviare</h2><div class="carta">
+    <div class="voce" style="padding:0;min-height:0"><span class="punto ${stato[0]}" style="background:var(--c)"></span><span class="corpo"><b>Modulo Rev.04 compilato</b><small>${esc(stato[1])}</small></span></div>
+    ${ui.modulo ? `<button class="btn" data-az="modulo">${ICO.stampa}Crea modulo da inviare</button>
+    <small class="tenue">Si apre il PDF: tocca <b>Condividi</b> e scegli <b>Mail</b> per inviarlo, <b>Stampa</b> per stamparlo o <b>Salva in File</b>.</small>
+    <button class="btn vuoto piccolo" data-az="modulo-vuoto">${ICO.foglio}Modulo vuoto da compilare a mano</button>`
+    : `<button class="btn secondario" data-az="vai-altro">${ICO.foglio}Carica il modulo originale</button>`}
+  </div>`;
+}
 /* ---------------- CASSETTE ---------------- */
 function cassette() {
   if (ui.sede && db.sites[ui.sede]) return cassetta(ui.sede);
@@ -78,6 +92,21 @@ function cassette() {
   ${keys.map(schedaCassetta).join('') || '<div class="carta vuota">Nessuna cassetta. Aggiungila da Altro → Cassette.</div>'}`;
 }
 const grado = (x) => { const c = L.statoArticolo(db, x).cls; return c === 'c-grave' ? 0 : c === 'c-reintegro' ? 1 : c === 'c-scadenza' ? 2 : 3; };
+function elencoCassetta(s, ordine) {
+  const gruppi = [['Da sistemare', (g) => g <= 1, 'c-grave'], ['In scadenza', (g) => g === 2, 'c-scadenza'], ['Regolari', (g) => g >= 3, 'c-ok']];
+  const items = db.sites[s];
+  return gruppi.map(([titolo, filtro, cls]) => {
+    const righe = ordine.filter((o) => filtro(o.g));
+    if (!righe.length) return '';
+    return `<h2 class="${cls}" style="color:var(--c)">${titolo} · ${righe.length}</h2><div class="lista tabella">
+      <div class="riga-t intest"><span>Articolo</span><span>Presenti</span><span>Scadenza</span></div>
+      ${righe.map(({ x, i }) => { const sa = L.statoArticolo(db, x), p = typeof x.disponibile === 'number' ? x.disponibile : 0, manca = L.manca(x), e = L.esitoScadenza(db, x.scadenza);
+        return `<button class="riga-t" data-az="modifica-art" data-sede="${esc(s)}" data-i="${i}"><span class="t-nome"><b>${esc(x.articolo)}</b>${sa.testo !== 'Regolare' ? `<small class="${sa.cls}" style="color:var(--c)">${esc(sa.testo)}${manca ? ' · integrare ' + manca : ''}</small>` : ''}</span>
+          <span class="t-num ${manca ? 'c-reintegro' : ''}" style="${manca ? 'color:var(--c)' : ''}"><b>${p}</b><small>/${esc(x.richiesta)}</small></span>
+          <span class="t-scad ${e === 'Scaduto' || e === 'Data anomala' ? 'c-grave' : e === 'In scadenza' ? 'c-scadenza' : ''}" style="${e && e !== 'Regolare' ? 'color:var(--c)' : ''}">${x.scadenza && x.scadenza !== '/' ? esc(x.scadenza) : '—'}</span></button>`; }).join('')}
+    </div>`;
+  }).join('') || '<div class="carta vuota">Nessun articolo.</div>';
+}
 function cassetta(s) {
   const st = L.statoSede(db, s), items = db.sites[s];
   // l'ordine (problemi in alto) si decide quando apri la cassetta e poi resta fermo:
@@ -87,11 +116,12 @@ function cassetta(s) {
   return `<button class="indietro" data-az="elenco">${ICO.indietro}Cassette</button>
   <div class="testa"><div><div class="sopra">Ultimo controllo: ${esc(L.ultimoControllo(db, s))}</div><h1>${esc(L.nomeSede(s))}</h1></div><span class="pill" style="--c:${COLORE[st.livello]};margin-bottom:6px">${ETICHETTA[st.livello]}</span></div>
   <div class="affianca"><button class="btn" data-az="controllo" data-sede="${esc(s)}">${ICO.spunta}Controllo</button><button class="btn secondario" data-az="uso" data-sede="${esc(s)}">${ICO.mano}Ho usato</button></div>
-  <div class="tenue" style="padding:0 2px">Modifica qui quantità presenti e scadenze (MM/AA). Si salva da solo.</div>
+  <div class="segmenti"><button data-az="vista" data-v="elenco" aria-pressed="${ui.vista !== 'modifica'}">Elenco</button><button data-az="vista" data-v="modifica" aria-pressed="${ui.vista === 'modifica'}">Modifica quantità</button></div>
+  ${ui.vista !== 'modifica' ? elencoCassetta(s, ordine) : `<div class="tenue" style="padding:0 2px">Cambia presenti con − e + e scrivi la scadenza (MM/AA). Si salva da solo.</div>
   <div class="lista">${ordine.map(({ x, i }) => { const sa = L.statoArticolo(db, x); return `<div class="art">
     <button class="nome" data-az="modifica-art" data-sede="${esc(s)}" data-i="${i}"><b>${esc(x.articolo)}</b><small>Richiesti ${esc(x.richiesta)}</small></button><span class="pill ${sa.cls}">${sa.testo}</span>
     <div class="sotto"><div class="passi"><button data-az="passo" data-sede="${esc(s)}" data-i="${i}" data-d="-1" aria-label="Togli 1">−</button><input type="number" inputmode="numeric" min="0" value="${typeof x.disponibile === 'number' ? x.disponibile : 0}" data-campo="disponibile" data-sede="${esc(s)}" data-i="${i}" aria-label="Presenti"><button data-az="passo" data-sede="${esc(s)}" data-i="${i}" data-d="1" aria-label="Aggiungi 1">+</button></div>
-    <input class="scad" value="${esc(x.scadenza === '/' ? '' : x.scadenza)}" placeholder="MM/AA" inputmode="numeric" data-campo="scadenza" data-sede="${esc(s)}" data-i="${i}" aria-label="Scadenza"><span class="etic">presenti · scadenza</span></div></div>`; }).join('') || '<div class="vuota">Nessun articolo.</div>'}</div>
+    <input class="scad" value="${esc(x.scadenza === '/' ? '' : x.scadenza)}" placeholder="MM/AA" inputmode="numeric" data-campo="scadenza" data-sede="${esc(s)}" data-i="${i}" aria-label="Scadenza"><span class="etic">presenti · scadenza</span></div></div>`; }).join('') || '<div class="vuota">Nessun articolo.</div>'}</div>`}
   <button class="btn vuoto" data-az="nuovo-art" data-sede="${esc(s)}">${ICO.piu}Aggiungi articolo</button>`;
 }
 
@@ -282,6 +312,8 @@ function conferma(el, testo) { const id = el.dataset.az + (el.dataset.i || '') +
 
 const AZ = {
   'apri-sede': (el) => vai('cassette', el.dataset.sede),
+  'vai-altro': () => vai('altro'),
+  vista: (el) => { ui.vista = el.dataset.v; ui.ordineDi = ''; disegnaMantieni(); },
   elenco: () => vai('cassette'),
   registra: () => { const inizio = L.inizioPeriodo(db), keys = Object.keys(db.sites); const s = keys.find((k) => !L.fattaNelPeriodo(db, k, inizio)) || keys[0]; if (s) { vai('cassette', s); foglioControllo(s); } },
   controllo: (el) => foglioControllo(el.dataset.sede),
