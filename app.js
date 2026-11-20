@@ -2,7 +2,7 @@
 import * as L from './logica.js';
 import { pdfModulo, pdfReintegro, calendarioIcs, leggiModulo, salvaModulo, provaModulo } from './stampa.js';
 
-export const VERSIONE = '1.3';
+export const VERSIONE = '1.4';
 let db = L.carica();
 const ui = { scheda: 'oggi', sede: '', modulo: '' };
 const aggiornaModulo = async () => { try { const m = await leggiModulo(); ui.modulo = m ? `${m.nome} · caricato il ${new Date(m.data).toLocaleDateString('it-IT')}` : ''; } catch { ui.modulo = ''; } };
@@ -77,9 +77,13 @@ function cassette() {
   return `<div class="testa"><div><div class="sopra">${keys.length} ${keys.length === 1 ? 'cassetta' : 'cassette'}</div><h1>Cassette</h1></div></div>
   ${keys.map(schedaCassetta).join('') || '<div class="carta vuota">Nessuna cassetta. Aggiungila da Altro → Cassette.</div>'}`;
 }
+const grado = (x) => { const c = L.statoArticolo(db, x).cls; return c === 'c-grave' ? 0 : c === 'c-reintegro' ? 1 : c === 'c-scadenza' ? 2 : 3; };
 function cassetta(s) {
   const st = L.statoSede(db, s), items = db.sites[s];
-  const ordine = items.map((x, i) => ({ x, i, g: (() => { const c = L.statoArticolo(db, x).cls; return c === 'c-grave' ? 0 : c === 'c-reintegro' ? 1 : c === 'c-scadenza' ? 2 : 3; })() })).sort((a, b) => a.g - b.g || a.x.articolo.localeCompare(b.x.articolo, 'it'));
+  // l'ordine (problemi in alto) si decide quando apri la cassetta e poi resta fermo:
+  // cambiando quantità o scadenze le righe non si spostano sotto le dita
+  if (ui.ordineDi !== s) { ui.ordineDi = s; ui.ordine = new Map(items.map((x) => [x.articolo, grado(x)])); }
+  const ordine = items.map((x, i) => ({ x, i, g: ui.ordine.has(x.articolo) ? ui.ordine.get(x.articolo) : 4 })).sort((a, b) => a.g - b.g || a.x.articolo.localeCompare(b.x.articolo, 'it'));
   return `<button class="indietro" data-az="elenco">${ICO.indietro}Cassette</button>
   <div class="testa"><div><div class="sopra">Ultimo controllo: ${esc(L.ultimoControllo(db, s))}</div><h1>${esc(L.nomeSede(s))}</h1></div><span class="pill" style="--c:${COLORE[st.livello]};margin-bottom:6px">${ETICHETTA[st.livello]}</span></div>
   <div class="affianca"><button class="btn" data-az="controllo" data-sede="${esc(s)}">${ICO.spunta}Controllo</button><button class="btn secondario" data-az="uso" data-sede="${esc(s)}">${ICO.mano}Ho usato</button></div>
@@ -260,7 +264,7 @@ function disegna() {
   document.querySelectorAll('#schede button').forEach((b) => b.setAttribute('aria-current', b.dataset.scheda === ui.scheda ? 'page' : 'false'));
   aggiornaBollino();
 }
-function vai(scheda, sede = '') { ui.scheda = scheda; ui.sede = sede; disegna(); window.scrollTo(0, 0); }
+function vai(scheda, sede = '') { ui.scheda = scheda; ui.sede = sede; ui.ordineDi = ''; disegna(); window.scrollTo(0, 0); }
 function chiave(nome, escludi) {
   const k = String(nome).trim().replace(/\s+/g, ' ').toUpperCase();
   if (!k) return { errore: 'Scrivi il nome della cassetta.' };
