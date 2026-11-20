@@ -1,11 +1,10 @@
 // Gestione Pronto Soccorso - web app per iPhone. I dati restano nel telefono.
 import * as L from './logica.js';
-import { pdfModulo, pdfReintegro, calendarioIcs, leggiModulo, salvaModulo, provaModulo } from './stampa.js';
+import { pdfReintegro, calendarioIcs, salvaModulo } from './stampa.js';
 
-export const VERSIONE = '1.6';
+export const VERSIONE = '1.7';
 let db = L.carica();
-const ui = { scheda: 'oggi', sede: '', modulo: '' };
-const aggiornaModulo = async () => { try { const m = await leggiModulo(); ui.modulo = m ? `${m.nome} · caricato il ${new Date(m.data).toLocaleDateString('it-IT')}` : ''; } catch { ui.modulo = ''; } };
+const ui = { scheda: 'oggi', sede: '' };
 const $ = (id) => document.getElementById(id);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const ICO = {
@@ -66,24 +65,9 @@ function oggi() {
     <strong>${fatto ? (giorni === 1 ? 'Tra 1 giorno' : `Tra ${giorni} giorni`) : 'Da fare'}</strong><small>${fatto ? 'Prossimo: ' + esc(L.dataLunga(prossimo)) : 'Previsto dal ' + esc(L.dataLunga(L.inizioPeriodo(db, now)))}</small>
     <span class="piede"><span>${fatto ? 'Registrato per questo periodo' : 'Successivo: ' + esc(L.dataLunga(prossimo))}</span><b>Calendario</b></span></button></div>
   <h2>Anomalie da risolvere · ${an.length}</h2>
-  ${gruppi.length ? gruppi.map((g) => `<div class="lista"><div class="voce" style="min-height:40px"><small style="font-weight:700;letter-spacing:.06em">${esc(L.nomeSede(g.k).toUpperCase())} · ${g.r.length}</small></div>${g.r.map((a) => `<button class="voce" data-az="apri-sede" data-sede="${esc(a.sede)}"><span class="punto ${a.cls}" style="background:var(--c)"></span><span class="corpo"><b>${esc(a.articolo)}</b><small>${esc(a.dettaglio)}</small></span><span class="pill ${a.cls}">${a.etichetta}</span></button>`).join('')}</div>`).join('') : '<div class="carta vuota">Nessuna anomalia: dotazioni complete e scadenze regolari.</div>'}
-  ${riquadroModulo()}`;
+  ${gruppi.length ? gruppi.map((g) => `<div class="lista"><div class="voce" style="min-height:40px"><small style="font-weight:700;letter-spacing:.06em">${esc(L.nomeSede(g.k).toUpperCase())} · ${g.r.length}</small></div>${g.r.map((a) => `<button class="voce" data-az="apri-sede" data-sede="${esc(a.sede)}"><span class="punto ${a.cls}" style="background:var(--c)"></span><span class="corpo"><b>${esc(a.articolo)}</b><small>${esc(a.dettaglio)}</small></span><span class="pill ${a.cls}">${a.etichetta}</span></button>`).join('')}</div>`).join('') : '<div class="carta vuota">Nessuna anomalia: dotazioni complete e scadenze regolari.</div>'}`;
 }
 
-function riquadroModulo() {
-  const keys = Object.keys(db.sites), inizio = L.inizioPeriodo(db), fatte = keys.filter((k) => L.fattaNelPeriodo(db, k, inizio)), mancano = keys.filter((k) => !fatte.includes(k));
-  const stato = !ui.modulo ? ['c-reintegro', 'Prima carica il modulo originale (una volta sola)']
-    : !fatte.length ? ['c-reintegro', 'Registra prima il controllo delle cassette']
-    : mancano.length ? ['c-scadenza', `Pronto per ${fatte.map(L.nomeSede).join(', ')} · manca ${mancano.map(L.nomeSede).join(', ')}`]
-    : ['c-ok', `Pronto: tutte le cassette controllate in questo periodo`];
-  return `<h2>Modulo da inviare</h2><div class="carta">
-    <div class="voce" style="padding:0;min-height:0"><span class="punto ${stato[0]}" style="background:var(--c)"></span><span class="corpo"><b>Modulo Rev.04 compilato</b><small>${esc(stato[1])}</small></span></div>
-    ${ui.modulo ? `<button class="btn" data-az="modulo">${ICO.stampa}Crea modulo da inviare</button>
-    <small class="tenue">Si apre il PDF: tocca <b>Condividi</b> e scegli <b>Mail</b> per inviarlo, <b>Stampa</b> per stamparlo o <b>Salva in File</b>.</small>
-    <button class="btn vuoto piccolo" data-az="modulo-vuoto">${ICO.foglio}Modulo vuoto da compilare a mano</button>`
-    : `<button class="btn secondario" data-az="vai-altro">${ICO.foglio}Carica il modulo originale</button>`}
-  </div>`;
-}
 /* ---------------- CASSETTE ---------------- */
 function cassette() {
   if (ui.sede && db.sites[ui.sede]) return cassetta(ui.sede);
@@ -161,14 +145,9 @@ function altro() {
     <b>Hai cambiato data? Togli prima quelli vecchi</b>
     <small class="tenue">La app non può cancellare dal Calendario dell'iPhone: lo fai tu in un colpo solo. Nel <b>Calendario</b> apri un controllo cassette → <b>Elimina evento</b> → <b>Elimina tutti gli eventi futuri</b>. Poi qui tocca di nuovo <b>Aggiungi al Calendario iPhone</b>.</small>
   </div>
-  <h2>Modulo Rev.04</h2>
+  <h2>Controlli</h2>
   <div class="carta">
-    <div class="voce" style="padding:0;min-height:0"><span class="corpo"><b>Modulo originale</b><small id="statoModulo">${ui.modulo ? esc(ui.modulo) : 'Non caricato'}</small></span><span class="pill ${ui.modulo ? 'c-ok' : 'c-reintegro'}">${ui.modulo ? 'PRONTO' : 'DA CARICARE'}</span></div>
-    <button class="btn secondario" data-az="carica-modulo">${ICO.foglio}${ui.modulo ? 'Cambia modulo' : 'Carica il modulo dal cloud'}</button>
-    <small class="tenue">Scegli il PDF (o la foto) del modulo da Drive, iCloud o File: resta solo in questo telefono, non va su internet.</small>
-    <div class="campo"><label for="fIntest">Intestazione</label><input id="fIntest" value="${esc(typeof s.intestazione === 'string' ? s.intestazione : '')}"></div>
-    <div class="campo"><label for="fSede">Sede</label><input id="fSede" value="${esc(typeof s.sedeModulo === 'string' ? s.sedeModulo : "Castelnovo ne' Monti")}"></div>
-    <div class="campo"><label for="fAddetto">Addetto</label><input id="fAddetto" value="${esc(L.addettoPredefinito(db))}"></div>
+    <div class="campo"><label for="fAddetto">Addetto predefinito</label><input id="fAddetto" value="${esc(L.addettoPredefinito(db))}"></div>
     <button class="btn" data-az="salva-modulo">Salva</button>
   </div>
   <h2>Cassette</h2>
@@ -191,7 +170,7 @@ const testaFoglio = (t, sopra = '') => `<div class="testa-foglio"><div>${sopra ?
 
 function foglioControllo(s) {
   const items = db.sites[s];
-  apriFoglio(testaFoglio('Controllo ' + L.nomeSede(s), 'Modulo Rev.04') + `
+  apriFoglio(testaFoglio('Controllo ' + L.nomeSede(s)) + `
     <div class="affianca"><div class="campo"><label for="cData">Data</label><input id="cData" type="date" value="${L.oggiIso()}"></div><div class="campo"><label for="cAddetto">Addetto</label><input id="cAddetto" value="${esc(L.addettoPredefinito(db))}"></div></div>
     <div class="campo"><label for="cUbicata">Ubicata presso</label><input id="cUbicata" placeholder="Es. ufficio, reparto…" value="${esc(ultimaUbicata(s))}"></div>
     <button class="btn verde" data-az="tutto-a-posto">${ICO.spunta}Tutto a posto</button>
@@ -216,7 +195,7 @@ function salvaControllo(s) {
   db.history.push({ data, sede: s, cassetta: L.nomeSede(s), ubicata: $('cUbicata').value.trim(), addetto: $('cAddetto').value.trim(), n: db.sites[s].length, note: $('cNote').value.trim(), esiti });
   salva(); chiudiFoglio(); disegna();
   apriFoglio(testaFoglio('Controllo salvato') + `<div class="tenue">${esiti.length ? esiti.length + ' cose da sistemare: le trovi in Reintegro.' : 'Cassetta a posto.'}</div>
-    <button class="btn" data-az="modulo">${ICO.stampa}Crea il modulo compilato</button><button class="btn vuoto" data-az="chiudi">Non ora</button>`);
+    <button class="btn" data-az="chiudi">Ok</button>`);
 }
 function foglioUso(s) {
   const items = db.sites[s];
@@ -274,13 +253,6 @@ async function consegna(byte, nome, tipo) {
   a.href = url; a.download = nome; document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 60000);
 }
 const stamp = () => L.oggiIso().replaceAll('-', '');
-async function modulo(vuoto) {
-  try {
-    avviso('Preparo il modulo…');
-    const b = await pdfModulo(vuoto ? null : L.datiModulo(db, L.cassetteDelPeriodo(db)));
-    await consegna(b, (vuoto ? 'Modulo_vuoto_' : 'Modulo_controllo_') + stamp() + '.pdf', 'application/pdf');
-  } catch (e) { avviso('Modulo non creato: ' + e.message); if (!ui.modulo) setTimeout(() => vai('altro'), 1200); }
-}
 async function calendario() {
   const ics = calendarioIcs(L.prossimoControllo(db), L.mesiCadenza(db), L.CADENZE[L.mesiCadenza(db)], preavviso());
   const blob = new Blob([ics], { type: 'text/calendar' });
@@ -338,12 +310,10 @@ const AZ = {
   'voce-storico': (el) => foglioStorico(+el.dataset.i),
   'salva-storico': (el) => { const h = db.history[+el.dataset.i]; h.data = $('hData').value || h.data; h.addetto = $('hAdd').value.trim(); if ($('hUb')) h.ubicata = $('hUb').value.trim(); h.note = $('hNote').value.trim(); salva(); chiudiFoglio(); disegna(); },
   'elimina-storico': (el) => { if (!conferma(el, 'Tocca di nuovo per eliminare')) return; db.history.splice(+el.dataset.i, 1); salva(); chiudiFoglio(); disegna(); },
-  modulo: () => modulo(false),
-  'modulo-vuoto': () => modulo(true),
   'pdf-reintegro': async () => { try { const r = righeReintegro(); const b = await pdfReintegro(r, `Stampato il ${new Date().toLocaleDateString('it-IT')} · ${r.length} righe`); await consegna(b, 'Pezzi_da_chiedere_' + stamp() + '.pdf', 'application/pdf'); } catch (e) { avviso('PDF non creato: ' + e.message); } },
   calendario: () => calendario(),
   'salva-cal': () => { const v = $('fProssimo').value; if (!v) { avviso('Scegli la data del prossimo controllo.'); return; } db.settings.dataRiferimento = v; db.settings.cadenza = Number($('fCadenza').value); db.settings.preavviso = Number($('fPreavviso').value); salva(); disegna(); avviso('Salvato. Togli i vecchi dal Calendario e aggiungi di nuovo.'); },
-  'salva-modulo': () => { db.settings.intestazione = $('fIntest').value.trim(); db.settings.sedeModulo = $('fSede').value.trim(); db.settings.addetto = $('fAddetto').value.trim(); salva(); avviso('Salvato.'); },
+  'salva-modulo': () => { db.settings.addetto = $('fAddetto').value.trim(); salva(); avviso('Salvato.'); },
   'gestisci-sede': (el) => foglioSede(el.dataset.sede),
   'nuova-sede': () => { if (Object.keys(db.sites).length >= 10) { avviso('Massimo 10 cassette.'); return; } foglioSede(''); },
   'salva-sede': (el) => {
@@ -355,7 +325,6 @@ const AZ = {
   'elimina-sede': (el) => { if (Object.keys(db.sites).length <= 1) { avviso('Deve restare almeno una cassetta.'); return; } if (!conferma(el, 'Tocca di nuovo: elimini cassetta e articoli')) return; delete db.sites[el.dataset.sede]; salva(); chiudiFoglio(); disegna(); },
   esporta: () => consegna(JSON.stringify(db, null, 1), 'ProntoSoccorso_copia_' + stamp() + '.json', 'application/json'),
   importa: () => $('scegliFile').click(),
-  'carica-modulo': () => $('scegliModulo').click(),
   azzera: (el) => { if (!conferma(el, 'Tocca di nuovo: cancelli tutto e riparti')) return; db = L.datiIniziali(); salva(); vai('oggi'); avviso('Ripartito dall\'elenco standard.'); },
 };
 function disegnaMantieni() { const y = window.scrollY; disegna(); window.scrollTo(0, y); }
@@ -377,13 +346,9 @@ $('scegliFile').addEventListener('change', async (e) => {
   try { db = L.normalizza(JSON.parse(await f.text())); salva(); vai('oggi'); avviso('Dati ripristinati.'); } catch (err) { avviso('File non valido: ' + err.message); }
 });
 
-$('scegliModulo').addEventListener('change', async (e) => {
-  const f = e.target.files[0]; e.target.value = ''; if (!f) return;
-  try { await salvaModulo(await provaModulo(f)); await aggiornaModulo(); disegna(); avviso('Modulo caricato: lo trovi nei PDF.'); } catch (err) { avviso('Modulo non caricato: ' + err.message); }
-});
 if (navigator.storage && navigator.storage.persist) navigator.storage.persist().catch(() => {});
 if ('serviceWorker' in navigator && location.protocol === 'https:') navigator.serviceWorker.register('sw.js').catch(() => {});
-aggiornaModulo().then(disegna);
+salvaModulo(null).catch(() => {});   // il modulo non si usa più: tolgo la copia salvata nel telefono
 disegna();
 { const v = $('sp-ver'); if (v) v.textContent = `versione ${VERSIONE}`; }
 (function chiudiSplash() {
